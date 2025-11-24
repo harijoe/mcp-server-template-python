@@ -2,12 +2,13 @@
 MCP Server Template
 """
 
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 from pydantic import Field
-
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
 import mcp.types as types
 
-mcp = FastMCP("Echo Server", stateless_http=True)
+mcp = FastMCP("Echo Server")
 
 
 @mcp.tool(
@@ -43,6 +44,25 @@ def greet_user(
 
     return f"{styles.get(style, styles['friendly'])} for someone named {name}."
 
+# Create middleware list
+middleware = [
+    Middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allow all origins; use specific origins for security
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=[
+            "mcp-protocol-version",
+            "mcp-session-id",
+            "Authorization",
+            "Content-Type",
+        ],
+        expose_headers=["mcp-session-id"],
+    )
+]
+
+# Create the HTTP application with middleware
+app = mcp.http_app(middleware=middleware, transport="streamable-http", stateless_http=False)
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http")
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)
